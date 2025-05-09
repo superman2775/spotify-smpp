@@ -1,12 +1,13 @@
-# spotify-smpp
-That's pretty much it.
-# todo
-Spotify Developer Dashboard: Maak een nieuwe app aan op het Spotify Developer Dashboard en noteer je client_id.
+# Spotify SMPP Widget
 
-Redirect URI: Voeg de redirect URI toe aan je app-instellingen, bijvoorbeeld http://localhost/smpp/widgets/spotify/index.html.
+Deze widget integreert Spotify in het SMPP-dashboard en past zich automatisch aan het actieve thema aan.
 
-Client ID invoegen: Vervang 'YOUR_CLIENT_ID' in spotify.js door je daadwerkelijke client ID.
+## Installatie
 
-Bestanden toevoegen: Plaats index.html en spotify.js in de map widgets/spotify/ van je SM.PP-installatie.
+1. Plaats de bestanden in de map `widgets/spotify/` van je SMPP-installatie.
+2. Vervang `"YOUR_ACCESS_TOKEN"` in `spotifyApi.js` door je eigen logica voor het verkrijgen van het toegangstoken.
+3. Voeg de widget toe aan je dashboardconfiguratie.
 
-Widget toevoegen aan dashboard: Voeg de widget toe aan je dashboardconfiguratie, bijvoorbeeld via config.json of index.html.
+## Thema-ondersteuning
+
+De widget detecteert automatisch het actieve thema en past de styling dienovereenkomstig aan.
