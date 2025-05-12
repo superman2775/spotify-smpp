@@ -1,8 +1,13 @@
 // This code can only be used with permission
 // How to get permission? You can't!
-import { widget } from "smpp";
 
-const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
+import { widget } from "smpp";
+import "./spotify.css";
+
+const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
+  console.log("[SpotifyWidget] Initialiseren...");
+  if (settings.get("spotify.enabled") === false) return;
+
   let token = storage.get("spotify_token");
   const clientId = "YOUR_SPOTIFY_CLIENT_ID";
   const redirectUri = window.location.origin;
@@ -17,6 +22,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
   ];
 
   function authorize() {
+    console.log("[SpotifyWidget] Start autorisatie...");
     const authUrl = `https://accounts.spotify.com/authorize?response_type=token&client_id=${clientId}&scope=${encodeURIComponent(
       scopes.join(" ")
     )}&redirect_uri=${encodeURIComponent(redirectUri)}`;
@@ -28,6 +34,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
     const params = new URLSearchParams(hash);
     const t = params.get("access_token");
     if (t) {
+      console.log("[SpotifyWidget] Token gevonden in URL");
       storage.set("spotify_token", t);
       window.location.hash = "";
       return t;
@@ -40,9 +47,11 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
     if (!token) return authorize();
   }
 
-  let toast, loader;
+  let toast = null;
+  let loader = null;
 
   const fetchWithToken = async (url, options = {}) => {
+    console.log("[SpotifyWidget] Fetch", url);
     const res = await fetch(url, {
       ...options,
       headers: {
@@ -57,13 +66,15 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
 
   const showToast = (message, success = true) => {
     if (!toast) return;
+    console.log("[SpotifyWidget] Toast:", message);
     toast.textContent = message;
-    toast.style.backgroundColor = success ? '#1DB954' : '#e74c3c';
+    toast.className = success ? 'widget-toast success' : 'widget-toast error';
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3000);
   };
 
   const handleApiError = (res) => {
+    console.warn("[SpotifyWidget] API Fout:", res.status);
     const map = {
       400: "❌ Ongeldig verzoek.",
       401: "🔐 Niet geautoriseerd.",
@@ -79,6 +90,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
   };
 
   const checkLikedTracks = async (ids) => {
+    console.log("[SpotifyWidget] Check liked tracks:", ids);
     if (ids.length === 0) return [];
     const res = await fetchWithToken(`https://api.spotify.com/v1/me/tracks/contains?ids=${ids.join(',')}`);
     if (!res.ok) return [];
@@ -86,6 +98,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
   };
 
   const searchSpotify = async (query, type = 'all', offset = 0) => {
+    console.log("[SpotifyWidget] Zoek:", query, type, offset);
     if (loader) loader.style.display = 'flex';
     const t = type === 'all' ? 'track,album,artist' : type;
     const res = await fetchWithToken(
@@ -94,14 +107,16 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
     if (loader) loader.style.display = 'none';
     if (!res.ok) return handleApiError(res);
     const data = await res.json();
-    return [
+    const items = [
       ...(data.tracks?.items || []).map(i => ({ type: '🎵', ...i })),
       ...(data.albums?.items || []).map(i => ({ type: '💿', ...i })),
       ...(data.artists?.items || []).map(i => ({ type: '👤', ...i }))
     ];
+    return items.length ? items : null;
   };
 
   const likeTrack = async (id, icon) => {
+    console.log("[SpotifyWidget] Like toggle:", id);
     const liked = icon.getAttribute('data-liked') === 'true';
     const method = liked ? 'DELETE' : 'PUT';
     const res = await fetchWithToken(`https://api.spotify.com/v1/me/tracks?ids=${id}`, { method });
@@ -112,7 +127,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
   };
 
   let currentOffset = 0;
-  let lastQuery = "";
+  let lastQuery = storage.get("spotify_last_query") || "";
 
   dom.innerHTML = `
     <div class="widget spotify widget-dark">
@@ -126,12 +141,13 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
           <option value="album">💿 Albums</option>
           <option value="artist">👤 Artiesten</option>
         </select>
-        <input placeholder="Zoek naar tracks, albums of artiesten" class="widget-input">
+        <input placeholder="Zoek naar tracks, albums of artiesten" class="widget-input" value="${lastQuery}">
       </div>
       <div class="widget-loader" style="display:none"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
       <div class="widget-results" style="max-height: 300px; overflow-y: auto;"></div>
       <div class="widget-pagination">
         <button class="widget-prev">⬅️ Vorige</button>
+        <span class="widget-page">Pagina 1</span>
         <button class="widget-next">Volgende ➡️</button>
       </div>
       <div class="widget-toast"></div>
@@ -143,12 +159,19 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
   const results = dom.querySelector(".widget-results");
   const next = dom.querySelector(".widget-next");
   const prev = dom.querySelector(".widget-prev");
+  const page = dom.querySelector(".widget-page");
   toast = dom.querySelector(".widget-toast");
   loader = dom.querySelector(".widget-loader");
 
   const renderResults = async () => {
+    console.log("[SpotifyWidget] Resultaten tonen", lastQuery, filter.value, currentOffset);
     const entries = await searchSpotify(lastQuery, filter.value, currentOffset);
-    if (!entries) return;
+    results.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!entries) {
+      results.innerHTML = `<div style="padding:1em;color:gray;text-align:center;">❌ Geen resultaten gevonden.</div>`;
+      page.textContent = `Pagina ${Math.floor(currentOffset / 5) + 1}`;
+      return;
+    }
     const trackEntries = entries.filter(e => e.type === '🎵');
     const trackIds = trackEntries.map(e => e.id);
     const likedMap = await checkLikedTracks(trackIds);
@@ -169,12 +192,18 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage }) => {
     results.querySelectorAll(".widget-like-icon").forEach(icon => {
       icon.onclick = () => likeTrack(icon.dataset.id, icon);
     });
+
+    page.textContent = `Pagina ${Math.floor(currentOffset / 5) + 1}`;
   };
+
+  if (lastQuery) renderResults();
 
   input.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
+      console.log("[SpotifyWidget] Zoekopdracht verstuurd");
       currentOffset = 0;
       lastQuery = input.value;
+      storage.set("spotify_last_query", lastQuery);
       renderResults();
     }
   });
