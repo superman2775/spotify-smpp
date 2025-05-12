@@ -202,3 +202,4 @@ const pollPlaybackState = async () => {
 });
 
 export default SpotifyWidget;
+// The end (i think) 
