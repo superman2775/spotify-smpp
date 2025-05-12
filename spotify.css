@@ -1,0 +1,122 @@
+
+widget.spotify {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, sans-serif;
+  box-shadow: var(--shadow);
+}
+
+.widget.spotify a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.widget.spotify .widget-header {
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.widget.spotify .widget-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.widget.spotify .widget-controls input,
+.widget.spotify .widget-controls select {
+  padding: 0.4rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  flex: 1;
+  background: var(--background-light);
+  color: var(--foreground);
+}
+
+.widget.spotify .widget-results {
+  margin-top: 0.5rem;
+}
+
+.widget.spotify .widget-item {
+  transition: background 0.2s;
+  border-radius: 0.5rem;
+  padding: 0.3rem;
+}
+
+.widget.spotify .widget-item:hover {
+  background: var(--background-hover);
+}
+
+.widget.spotify .widget-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.widget.spotify .widget-pagination button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.widget.spotify .widget-page {
+  font-weight: bold;
+  opacity: 0.75;
+}
+
+.widget.spotify .widget-toast {
+  margin-top: 0.75rem;
+  text-align: center;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: none;
+}
+
+.widget.spotify .widget-toast.show {
+  display: block;
+}
+
+.widget.spotify .widget-toast.success {
+  background: #1DB954;
+  color: #fff;
+}
+
+.widget.spotify .widget-toast.error {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.widget.spotify .widget-loader {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 0.5rem 0;
+}
+
+.widget.spotify .widget-loader .dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 1.2s infinite ease-in-out both;
+}
+
+.widget.spotify .widget-loader .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.widget.spotify .widget-loader .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
