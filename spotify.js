@@ -1,6 +1,5 @@
 // This code can only be used with permission
 // How to get permission? You can't!
-
 import { widget } from "smpp";
 import "./spotify.css";
 
@@ -18,7 +17,9 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     "user-library-modify",
     "user-read-currently-playing",
     "user-read-private",
-    "user-read-email"
+    "user-read-email",
+    "streaming",
+    "app-remote-control"
   ];
 
   function authorize() {
@@ -73,20 +74,37 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     setTimeout(() => toast.classList.remove('show'), 3000);
   };
 
-  const handleApiError = (res) => {
-    console.warn("[SpotifyWidget] API Fout:", res.status);
-    const map = {
-      400: "❌ Ongeldig verzoek.",
-      401: "🔐 Niet geautoriseerd.",
-      403: "🚫 Verboden.",
-      404: "❓ Niet gevonden.",
-      429: "🐢 Te veel verzoeken.",
-      500: "💥 Interne fout.",
-      502: "🌩️ Bad Gateway.",
-      503: "⏳ Niet beschikbaar.",
-      504: "🚫 Timeout."
-    };
-    showToast(map[res.status] || `⚠️ Fout (${res.status})`, false);
+  const playTrack = async (trackUri) => {
+    console.log("[SpotifyWidget] Afspelen:", trackUri);
+    const res = await fetchWithToken("https://api.spotify.com/v1/me/player/play", {
+      method: "PUT",
+      body: JSON.stringify({ uris: [trackUri] })
+    });
+    if (!res.ok) {
+      results.querySelectorAll(".widget-item").forEach(el => el.classList.remove("playing"));
+      switch (res.status) {
+        case 401: return showToast("🔐 Niet geautoriseerd om af te spelen", false);
+        case 403: return showToast("🚫 Geen afspeelrechten op dit apparaat", false);
+        case 404: return showToast("❓ Geen actief apparaat gevonden", false);
+        case 429: return showToast("🐢 Te veel verzoeken, probeer later opnieuw", false);
+        case 503: return showToast("⏳ Spotify service tijdelijk niet beschikbaar", false);
+        default: return showToast(`⚠️ Fout bij afspelen (${res.status})`, false);
+      }
+    } else {
+      showToast("▶️ Afspelen gestart");
+      setTimeout(pollPlaybackState, 1500);
+    }
+  };
+
+  const likeTrack = async (id, icon) => {
+    console.log("[SpotifyWidget] Like toggle:", id);
+    const liked = icon.getAttribute('data-liked') === 'true';
+    const method = liked ? 'DELETE' : 'PUT';
+    const res = await fetchWithToken(`https://api.spotify.com/v1/me/tracks?ids=${id}`, { method });
+    if (!res.ok) return handleApiError(res);
+    icon.src = liked ? 'like-icon-png/heart-outline.png' : 'like-icon-png/heart-filled.png';
+    icon.setAttribute('data-liked', liked ? 'false' : 'true');
+    showToast(liked ? "💔 Verwijderd uit favorieten" : "❤️ Toegevoegd aan favorieten");
   };
 
   const checkLikedTracks = async (ids) => {
@@ -115,56 +133,13 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     return items.length ? items : null;
   };
 
-  const likeTrack = async (id, icon) => {
-    console.log("[SpotifyWidget] Like toggle:", id);
-    const liked = icon.getAttribute('data-liked') === 'true';
-    const method = liked ? 'DELETE' : 'PUT';
-    const res = await fetchWithToken(`https://api.spotify.com/v1/me/tracks?ids=${id}`, { method });
-    if (!res.ok) return handleApiError(res);
-    icon.src = liked ? 'like-icon-png/heart-outline.png' : 'like-icon-png/heart-filled.png';
-    icon.setAttribute('data-liked', liked ? 'false' : 'true');
-    showToast(liked ? "💔 Verwijderd uit favorieten" : "❤️ Toegevoegd aan favorieten");
-  };
-
   let currentOffset = 0;
   let lastQuery = storage.get("spotify_last_query") || "";
 
-  dom.innerHTML = `
-    <div class="widget spotify widget-dark">
-      <div class="widget-header">
-        <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_CMYK_Green.png" style="height:20px;margin-right:5px"> Spotify
-      </div>
-      <div class="widget-controls">
-        <select class="widget-filter">
-          <option value="all">🔍 Alles</option>
-          <option value="track">🎵 Tracks</option>
-          <option value="album">💿 Albums</option>
-          <option value="artist">👤 Artiesten</option>
-        </select>
-        <input placeholder="Zoek naar tracks, albums of artiesten" class="widget-input" value="${lastQuery}">
-      </div>
-      <div class="widget-loader" style="display:none"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-      <div class="widget-results" style="max-height: 300px; overflow-y: auto;"></div>
-      <div class="widget-pagination">
-        <button class="widget-prev">⬅️ Vorige</button>
-        <span class="widget-page">Pagina 1</span>
-        <button class="widget-next">Volgende ➡️</button>
-      </div>
-      <div class="widget-toast"></div>
-    </div>
-  `;
-
-  const input = dom.querySelector(".widget-input");
-  const filter = dom.querySelector(".widget-filter");
   const results = dom.querySelector(".widget-results");
-  const next = dom.querySelector(".widget-next");
-  const prev = dom.querySelector(".widget-prev");
   const page = dom.querySelector(".widget-page");
-  toast = dom.querySelector(".widget-toast");
-  loader = dom.querySelector(".widget-loader");
 
   const renderResults = async () => {
-    console.log("[SpotifyWidget] Resultaten tonen", lastQuery, filter.value, currentOffset);
     const entries = await searchSpotify(lastQuery, filter.value, currentOffset);
     results.scrollTo({ top: 0, behavior: 'smooth' });
     if (!entries) {
@@ -181,10 +156,12 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
       const link = entry.external_urls?.spotify || '#';
       const likeIdx = trackEntries.findIndex(te => te.id === entry.id);
       const isLiked = likeIdx >= 0 ? likedMap[likeIdx] : false;
-      const likeBtn = entry.type === '🎵' ? `<img data-id="${entry.id}" data-liked="${isLiked}" class="widget-like-icon" src="like-icon-png/${isLiked ? 'heart-filled' : 'heart-outline'}.png" style="height:20px;cursor:pointer;">` : '';
-      return `<div class="widget-item" style="display:flex;align-items:center;gap:10px;margin:5px 0;">
-        <img src="${image}" class="widget-thumb" style="height:40px;width:40px;object-fit:cover;">
+      const likeBtn = entry.type === '🎵' ? `<img data-id="${entry.id}" data-liked="${isLiked}" class="widget-like-icon" src="like-icon-png/${isLiked ? 'heart-filled' : 'heart-outline'}.png" alt="${isLiked ? 'unlike' : 'like'} knop" style="height:20px;cursor:pointer;">` : '';
+      const playBtn = entry.type === '🎵' ? `<button class="widget-play" data-uri="${entry.uri}" title="Afspelen">▶️</button>` : '';
+      return `$1<span class=\"widget-status\"></span>
+        <img src="${image}" class="widget-thumb" alt="cover image" style="height:40px;width:40px;object-fit:cover;">
         <div style="flex:1"><a href="${link}" target="_blank">${label}</a></div>
+        ${playBtn}
         ${likeBtn}
       </div>`;
     }).join('');
@@ -192,33 +169,36 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     results.querySelectorAll(".widget-like-icon").forEach(icon => {
       icon.onclick = () => likeTrack(icon.dataset.id, icon);
     });
+    results.querySelectorAll(".widget-play").forEach(btn => {
+      btn.onclick = () => {
+        results.querySelectorAll(".widget-item").forEach(el => el.classList.remove("playing"));
+        btn.closest(".widget-item").classList.add("playing");
+        playTrack(btn.dataset.uri);
+      };
+    });
 
     page.textContent = `Pagina ${Math.floor(currentOffset / 5) + 1}`;
   };
+});
 
-  if (lastQuery) renderResults();
+const pollPlaybackState = async () => {
+    const res = await fetchWithToken("https://api.spotify.com/v1/me/player");
+    if (!res.ok) return;
+    const data = await res.json();
+    const playingUri = data?.item?.uri;
+    const isPlaying = data?.is_playing;
+    results.querySelectorAll(".widget-item").forEach(item => {
+      const playBtn = item.querySelector(".widget-play");
+      if (playBtn && playBtn.dataset.uri === playingUri && isPlaying) {
+        item.classList.add("playing");
+      } else {
+        item.classList.remove("playing");
+      }
+    });
+    setTimeout(pollPlaybackState, 10000);
+  };
 
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      console.log("[SpotifyWidget] Zoekopdracht verstuurd");
-      currentOffset = 0;
-      lastQuery = input.value;
-      storage.set("spotify_last_query", lastQuery);
-      renderResults();
-    }
-  });
-
-  next.addEventListener("click", () => {
-    currentOffset += 5;
-    renderResults();
-  });
-
-  prev.addEventListener("click", () => {
-    if (currentOffset >= 5) {
-      currentOffset -= 5;
-      renderResults();
-    }
-  });
+  setTimeout(pollPlaybackState, 1000);
 });
 
 export default SpotifyWidget;
