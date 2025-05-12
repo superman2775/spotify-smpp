@@ -8,7 +8,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   if (settings.get("spotify.enabled") === false) return;
 
   let token = storage.get("spotify_token");
-  const clientId = "YOUR_SPOTIFY_CLIENT_ID";
+  const clientId = "f193259a379944d3b2a1e929f860712e";
   const redirectUri = window.location.origin;
   const scopes = [
     "user-read-playback-state",
