@@ -1,30 +1,28 @@
 // This code can only be used with permission
 // How to get permission? You can't!
-
 import { widget } from "smpp";
 import "./spotify.css";
 
 const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   if (settings.get("spotify.enabled") === false) return;
 
+  let token = storage.get("spotify_token");
   const clientId = "f193259a379944d3b2a1e929f860712e";
   const redirectUri = window.location.origin;
   const scopes = [
     "user-read-playback-state",
     "user-modify-playback-state",
+    "user-library-read",
+    "user-library-modify",
     "user-read-currently-playing",
-    "streaming",
-    "app-remote-control",
+    "user-read-private",
     "user-read-email",
-    "user-read-private"
+    "streaming",
+    "app-remote-control"
   ];
 
-  let token = storage.get("spotify_token");
-
   function authorize() {
-    const authUrl = `https://accounts.spotify.com/authorize?response_type=token&client_id=${clientId}&scope=${encodeURIComponent(
-      scopes.join(" ")
-    )}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const authUrl = `https://accounts.spotify.com/authorize?response_type=token&client_id=${clientId}&scope=${encodeURIComponent(scopes.join(" "))}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     window.location.href = authUrl;
   }
 
@@ -45,6 +43,8 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     if (!token) return authorize();
   }
 
+  let toast, loader;
+
   const fetchWithToken = async (url, options = {}) => {
     const res = await fetch(url, {
       ...options,
@@ -61,9 +61,29 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   const showToast = (message, success = true) => {
     if (!toast) return;
     toast.textContent = message;
-    toast.className = success ? "widget-toast success" : "widget-toast error";
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 3000);
+    toast.className = success ? 'widget-toast success' : 'widget-toast error';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  };
+
+  const checkLikedTracks = async (ids) => {
+    if (!ids.length) return [];
+    const res = await fetchWithToken(`https://api.spotify.com/v1/me/tracks/contains?ids=${ids.join(',')}`);
+    if (!res.ok) return Array(ids.length).fill(false);
+    return await res.json();
+  };
+
+  const toggleLike = async (trackId, icon) => {
+    const isLiked = icon.dataset.liked === 'true';
+    const method = isLiked ? 'DELETE' : 'PUT';
+    const res = await fetchWithToken(`https://api.spotify.com/v1/me/tracks?ids=${trackId}`, { method });
+    if (!res.ok) {
+      showToast(`⚠️ Fout bij ${isLiked ? 'unliken' : 'liken'} (${res.status})`, false);
+    } else {
+      icon.src = isLiked ? "like-icon-like.png" : "like-icon-liked.png";
+      icon.dataset.liked = (!isLiked).toString();
+      showToast(isLiked ? "💔 Verwijderd uit favorieten" : "❤️ Toegevoegd aan favorieten");
+    }
   };
 
   let isPaused = false;
@@ -76,20 +96,12 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     const res = await fetchWithToken(url, { method: "PUT" });
     if (!res.ok) {
       const map = {
-        403: isPaused
-          ? "🚫 Kan niet hervatten"
-          : "🚫 Je kunt momenteel niet pauzeren",
+        403: isPaused ? "🚫 Kan niet hervatten" : "🚫 Je kunt momenteel niet pauzeren",
         404: "❓ Geen actief apparaat",
         429: "🐢 Te veel verzoeken",
         503: "⏳ Service niet beschikbaar"
       };
-      showToast(
-        map[res.status] ||
-          `⚠️ Fout (${res.status}) bij ${
-            isPaused ? "hervatten" : "pauzeren"
-          }`,
-        false
-      );
+      showToast(map[res.status] || `⚠️ Fout (${res.status}) bij ${isPaused ? 'hervatten' : 'pauzeren'}`, false);
     } else {
       isPaused = !isPaused;
       pauseButton.textContent = isPaused ? "▶️ Hervat" : "⏸️ Pauzeer";
@@ -110,7 +122,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     const data = await res.json();
     const playingUri = data?.item?.uri;
     const isPlaying = data?.is_playing;
-    results.querySelectorAll(".widget-item").forEach((item) => {
+    results.querySelectorAll(".widget-item").forEach(item => {
       const playBtn = item.querySelector(".widget-play");
       if (playBtn && playBtn.dataset.uri === playingUri && isPlaying) {
         item.classList.add("playing");
@@ -121,18 +133,13 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     setTimeout(pollPlaybackState, 10000);
   };
 
-  const searchSpotify = async (query, type = "track") => {
-    loader.style.display = "flex";
-    const res = await fetchWithToken(
-      `https://api.spotify.com/v1/search?q=${encodeURIComponent(
-        query
-      )}&type=${type}&limit=5`
-    );
-    loader.style.display = "none";
-    if (!res.ok)
-      return showToast(`❌ Fout tijdens zoeken (${res.status})`, false);
+  const searchSpotify = async (query, type = 'track') => {
+    loader.style.display = 'flex';
+    const res = await fetchWithToken(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=5`);
+    loader.style.display = 'none';
+    if (!res.ok) return showToast(`❌ Fout tijdens zoeken (${res.status})`, false);
     const data = await res.json();
-    return data[type + "s"]?.items || [];
+    return data[type + 's']?.items || [];
   };
 
   const renderResults = async (query, type) => {
@@ -141,20 +148,26 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
       results.innerHTML = `<div style="padding:1em;color:gray;text-align:center;">❌ Geen resultaten gevonden.</div>`;
       return;
     }
-    results.innerHTML = items
-      .map((entry) => {
-        const image =
-          entry.images?.[0]?.url || entry.album?.images?.[0]?.url || "";
-        const label = `${
-          type === "track" ? "🎵" : type === "album" ? "💿" : "👤"
-        } ${entry.name}`;
-        const link = entry.external_urls?.spotify || "#";
-        return `<div class="widget-item" style="display:flex;align-items:center;gap:10px;margin:5px 0;">
+    const trackIds = items.map(item => item.id).filter(Boolean);
+    const liked = await checkLikedTracks(trackIds);
+
+    results.innerHTML = items.map((entry, index) => {
+      const image = entry.images?.[0]?.url || entry.album?.images?.[0]?.url || '';
+      const label = `${type === 'track' ? '🎵' : type === 'album' ? '💿' : '👤'} ${entry.name}`;
+      const link = entry.external_urls?.spotify || '#';
+      const likeState = liked[index] ? 'true' : 'false';
+      const likeIcon = liked[index] ? 'like-icon-liked.png' : 'like-icon-like.png';
+      const likeBtn = type === 'track' ? `<img src="${likeIcon}" class="widget-like" data-id="${entry.id}" data-liked="${likeState}" style="height:20px;cursor:pointer">` : '';
+      return `<div class="widget-item" style="display:flex;align-items:center;gap:10px;margin:5px 0;">
         <img src="${image}" class="widget-thumb" alt="cover" style="height:40px;width:40px;object-fit:cover;">
         <div style="flex:1"><a href="${link}" target="_blank">${label}</a></div>
+        ${likeBtn}
       </div>`;
-      })
-      .join("");
+    }).join('');
+
+    results.querySelectorAll(".widget-like").forEach(icon => {
+      icon.onclick = () => toggleLike(icon.dataset.id, icon);
+    });
   };
 
   const widgetRoot = document.createElement("div");
@@ -178,8 +191,8 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   widgetRoot.querySelector(".widget-controls").appendChild(renderPauseButton());
   dom.appendChild(widgetRoot);
 
-  const toast = widgetRoot.querySelector(".widget-toast");
-  const loader = widgetRoot.querySelector(".widget-loader");
+  toast = widgetRoot.querySelector(".widget-toast");
+  loader = widgetRoot.querySelector(".widget-loader");
   const results = widgetRoot.querySelector(".widget-results");
   const input = widgetRoot.querySelector(".widget-input");
   const filter = widgetRoot.querySelector(".widget-filter");
