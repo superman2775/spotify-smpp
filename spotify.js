@@ -17,6 +17,8 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     "user-read-currently-playing",
     "user-read-private",
     "user-read-email",
+    "playlist-read-private",
+    "playlist-read-collaborative",
     "streaming",
     "app-remote-control"
   ];
@@ -95,6 +97,20 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     }
   };
 
+  const renderPlaylists = async () => {
+    const res = await fetchWithToken("https://api.spotify.com/v1/me/playlists?limit=10");
+    if (!res.ok) return showToast(`❌ Fout bij ophalen van playlists (${res.status})`, false);
+    const data = await res.json();
+    const playlists = data.items || [];
+    const html = playlists.map(pl => `
+      <div class="widget-item">
+        <img src="${pl.images?.[0]?.url || ''}" class="widget-thumb" alt="playlist">
+        <div style="flex:1">📂 <a href="${pl.external_urls.spotify}" target="_blank">${pl.name}</a></div>
+        <button class="widget-play" data-uri="${pl.uri}" style="margin-left:auto">▶️</button>
+      </div>`).join('');
+    results.innerHTML = `<div style="padding:.5em 1em;font-weight:bold">📚 Jouw playlists</div>` + html;
+  };
+
   let isPaused = false;
   let pauseButton;
 
@@ -156,6 +172,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   };
 
   const renderResults = async (query, type) => {
+    if (query.trim() === "" && type === "playlist") return renderPlaylists();
     const items = await searchSpotify(query, type);
     if (!items.length) {
       results.innerHTML = `<div style="padding:1em;color:gray;text-align:center;">❌ Geen resultaten gevonden.</div>`;
@@ -166,7 +183,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
 
     results.innerHTML = items.map((entry, index) => {
       const image = entry.images?.[0]?.url || entry.album?.images?.[0]?.url || '';
-      const label = `${type === 'track' ? '🎵' : type === 'album' ? '💿' : '👤'} ${entry.name}`;
+      const label = `${type === 'track' ? '🎵' : type === 'album' ? '💿' : type === 'playlist' ? '📂' : '👤'} ${entry.name}`;
       const link = entry.external_urls?.spotify || '#';
       const likeState = liked[index] ? 'true' : 'false';
       const likeIcon = liked[index] ? 'like-icon-liked.png' : 'like-icon-like.png';
@@ -194,6 +211,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
         <option value="track">🎵 Tracks</option>
         <option value="album">💿 Albums</option>
         <option value="artist">👤 Artiesten</option>
+        <option value="playlist">📂 Playlists</option>
       </select>
       <input class="widget-input" placeholder="Zoek iets op Spotify">
     </div>
@@ -213,6 +231,27 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   input.addEventListener("keypress", (e) => {
     if (e.key === "Enter") renderResults(input.value, filter.value);
   });
+
+  filter.addEventListener("change", () => {
+    if (filter.value === "playlist") renderPlaylists();
+  });
+
+  results.addEventListener("click", (e) => {
+    const btn = e.target.closest(".widget-play");
+    if (btn?.dataset?.uri) playUri(btn.dataset.uri);
+  });
+
+  const playUri = async (uri) => {
+    const res = await fetchWithToken("https://api.spotify.com/v1/me/player/play", {
+      method: "PUT",
+      body: JSON.stringify({ context_uri: uri })
+    });
+    if (!res.ok) {
+      showToast(`⚠️ Kon playlist niet afspelen (${res.status})`, false);
+    } else {
+      showToast("▶️ Afspelen gestart");
+    }
+  };
 
   setTimeout(pollPlaybackState, 1000);
 });
