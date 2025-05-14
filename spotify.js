@@ -121,7 +121,7 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     const res = await fetchWithToken(url, { method: "PUT" });
     if (!res.ok) {
       const map = {
-        403: isPaused ? "🚫 Kan niet hervatten" : "🚫 Je kunt momenteel niet pauzeren",
+        403: isPaused ? "🚫 Kan niet hervatten. Mogelijks door: Geen Premium" : "🚫 Kan niet pauzeren. Mogelijks door: Geen Premium",
         404: "❓ Geen actief apparaat",
         429: "🐢 Te veel verzoeken",
         503: "⏳ Service niet beschikbaar"
