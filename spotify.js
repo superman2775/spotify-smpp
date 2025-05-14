@@ -1,5 +1,5 @@
-// This code can only be used with permission
-// How to get permission? You can't!
+// Only use with permission
+// You can't get permission rn 💀
 import { widget } from "smpp";
 import "./spotify.css";
 
@@ -46,16 +46,25 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   let toast, loader;
 
   const fetchWithToken = async (url, options = {}) => {
-    const res = await fetch(url, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        ...options.headers
+    try {
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          ...options.headers
+        }
+      });
+      if (res.status === 401) {
+        console.warn("[Spotify] 401 Unauthorized — triggering reauth");
+        authorize();
       }
-    });
-    if (res.status === 401) authorize();
-    return res;
+      return res;
+    } catch (err) {
+      console.error("[Spotify] fetch failed:", err);
+      showToast("🌐 Netwerkfout. Controleer je verbinding.", false);
+      throw err;
+    }
   };
 
   const showToast = (message, success = true) => {
@@ -117,19 +126,23 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   };
 
   const pollPlaybackState = async () => {
-    const res = await fetchWithToken("https://api.spotify.com/v1/me/player");
-    if (!res.ok) return;
-    const data = await res.json();
-    const playingUri = data?.item?.uri;
-    const isPlaying = data?.is_playing;
-    results.querySelectorAll(".widget-item").forEach(item => {
-      const playBtn = item.querySelector(".widget-play");
-      if (playBtn && playBtn.dataset.uri === playingUri && isPlaying) {
-        item.classList.add("playing");
-      } else {
-        item.classList.remove("playing");
-      }
-    });
+    try {
+      const res = await fetchWithToken("https://api.spotify.com/v1/me/player");
+      if (!res.ok) return;
+      const data = await res.json();
+      const playingUri = data?.item?.uri;
+      const isPlaying = data?.is_playing;
+      results.querySelectorAll(".widget-item").forEach(item => {
+        const playBtn = item.querySelector(".widget-play");
+        if (playBtn && playBtn.dataset.uri === playingUri && isPlaying) {
+          item.classList.add("playing");
+        } else {
+          item.classList.remove("playing");
+        }
+      });
+    } catch (err) {
+      console.warn("[Spotify] playback poll error:", err);
+    }
     setTimeout(pollPlaybackState, 10000);
   };
 
