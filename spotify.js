@@ -1,5 +1,6 @@
 // Only use with permission
 // You can't get permission rn 💀
+class SpotifyWidget extends WidgetBase 
 import { widget } from "smpp";
 import "./spotify.css";
 
