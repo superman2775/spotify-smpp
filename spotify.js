@@ -3,6 +3,7 @@
 class SpotifyWidget extends WidgetBase 
 import { widget } from "smpp";
 import "./spotify.css";
+registerWidget(new SpotifyWidget());
 
 const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   if (settings.get("spotify.enabled") === false) return;
