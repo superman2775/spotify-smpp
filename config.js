@@ -1,7 +1,4 @@
-// Voeg deze code toe aan de settings in smpp
-// Ik heb geen idee waar de settings staan deze code is voorlopig gewoon copy paste van chatgpt
-spotify: {
-  enabled: true
-}
-
+// Voeg deze code toe aan de settings in config.js in smpp (denk ik) 
+// This needs some changes but i'm too lazy
+// Currently no code here
 
