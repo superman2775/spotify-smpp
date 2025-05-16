@@ -1,12 +1,11 @@
 // Only use with permission
 // You can't get permission rn 💀
 class SpotifyWidget extends WidgetBase 
-import { widget } from "smpp";
+import { widget, registerWidget } from "smpp";
 import "./spotify.css";
-registerWidget(new SpotifyWidget());
 
-const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
-  if (settings.get("spotify.enabled") === false) return;
+const spotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
+    if (settings.get("spotify.enabled") === false) return;
 
   let token = storage.get("spotify_token");
   const clientId = "f193259a379944d3b2a1e929f860712e";
@@ -257,5 +256,5 @@ const SpotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
 
   setTimeout(pollPlaybackState, 1000);
 });
-
-export default SpotifyWidget;
+registerWidget(spotifyWidget);
+export default spotifyWidget;
