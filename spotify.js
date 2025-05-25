@@ -99,18 +99,25 @@ const spotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
   };
 
   const renderPlaylists = async () => {
-    const res = await fetchWithToken("https://api.spotify.com/v1/me/playlists?limit=10");
-    if (!res.ok) return showToast(`❌ Fout bij ophalen van playlists (${res.status})`, false);
-    const data = await res.json();
-    const playlists = data.items || [];
-    const html = playlists.map(pl => `
-      <div class="widget-item">
-        <img src="${pl.images?.[0]?.url || ''}" class="widget-thumb" alt="playlist">
-        <div style="flex:1">📂 <a href="${pl.external_urls.spotify}" target="_blank">${pl.name}</a></div>
-        <button class="widget-play" data-uri="${pl.uri}" style="margin-left:auto">▶️</button>
-      </div>`).join('');
-    results.innerHTML = `<div style="padding:.5em 1em;font-weight:bold">📚 Jouw playlists</div>` + html;
-  };
+  const res = await fetchWithToken("https://api.spotify.com/v1/me/playlists?limit=10");
+  if (!res.ok) return showToast(`❌ Fout bij ophalen van playlists (${res.status})`, false);
+  const data = await res.json();
+  const playlists = data.items || [];
+  const html = playlists.map(pl => `
+    <div class="widget-item">
+      <img class="widget-cover" src="${pl.images?.[0]?.url || ''}" alt="playlist" />
+      <div class="widget-meta">
+        <a class="widget-label" href="${pl.external_urls.spotify}" target="_blank">📂 ${pl.name}</a>
+        <a class="widget-spotify-link" href="${pl.external_urls.spotify}" target="_blank">🔗 Bekijk in Spotify</a>
+      </div>
+    </div>
+  `).join('');
+  results.innerHTML = `
+    <div class="widget-section-title">📚 Jouw playlists</div>
+    ${html}
+  `;
+};
+
 
   let isPaused = false;
   let pauseButton;
@@ -172,34 +179,45 @@ const spotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     return data[type + 's']?.items || [];
   };
 
-  const renderResults = async (query, type) => {
-    if (query.trim() === "" && type === "playlist") return renderPlaylists();
-    const items = await searchSpotify(query, type);
-    if (!items.length) {
-      results.innerHTML = `<div style="padding:1em;color:gray;text-align:center;">❌ Geen resultaten gevonden.</div>`;
-      return;
-    }
-    const trackIds = items.map(item => item.id).filter(Boolean);
-    const liked = await checkLikedTracks(trackIds);
+const renderResults = async (query, type) => {
+  if (query.trim() === "" && type === "playlist") return renderPlaylists();
+  const items = await searchSpotify(query, type);
+  if (!items.length) {
+    results.innerHTML = `
+      <div class="widget-section-empty">❌ Geen resultaten gevonden.</div>
+    `;
+    return;
+  }
+  const trackIds = items.map(item => item.id).filter(Boolean);
+  const liked = await checkLikedTracks(trackIds);
 
-    results.innerHTML = items.map((entry, index) => {
-      const image = entry.images?.[0]?.url || entry.album?.images?.[0]?.url || '';
-      const label = `${type === 'track' ? '🎵' : type === 'album' ? '💿' : type === 'playlist' ? '📂' : '👤'} ${entry.name}`;
-      const link = entry.external_urls?.spotify || '#';
-      const likeState = liked[index] ? 'true' : 'false';
-      const likeIcon = liked[index] ? 'like-icon-liked.png' : 'like-icon-like.png';
-      const likeBtn = type === 'track' ? `<img src="${likeIcon}" class="widget-like" data-id="${entry.id}" data-liked="${likeState}" style="height:20px;cursor:pointer">` : '';
-      return `<div class="widget-item" style="display:flex;align-items:center;gap:10px;margin:5px 0;">
-        <img src="${image}" class="widget-thumb" alt="cover" style="height:40px;width:40px;object-fit:cover;">
-        <div style="flex:1"><a href="${link}" target="_blank">${label}</a></div>
-        ${likeBtn}
-      </div>`;
-    }).join('');
+  results.innerHTML = items.map((entry, index) => {
+    const image = entry.images?.[0]?.url || entry.album?.images?.[0]?.url || '';
+    const label = `${type === 'track' ? '🎵' : type === 'album' ? '💿' : type === 'playlist' ? '📂' : '👤'} ${entry.name}`;
+    const link = entry.external_urls?.spotify || '#';
+    const likeState = liked[index] ? 'true' : 'false';
+    const likeIcon = liked[index] ? 'like-icon-liked.png' : 'like-icon-like.png';
+    const likeBtn = type === 'track'
+      ? `<img class="widget-like" src="https://raw.githubusercontent.com/superman2775/spotify-smpp/main/${likeIcon}" data-id="${entry.id}" data-liked="${likeState}" />`
+      : '';
 
-    results.querySelectorAll(".widget-like").forEach(icon => {
-      icon.onclick = () => toggleLike(icon.dataset.id, icon);
-    });
-  };
+    return `
+      <div class="widget-item">
+        <img class="widget-cover" src="https://raw.githubusercontent.com/superman2775/spotify-smpp/main/${image}" alt="cover" />
+        <div class="widget-meta">
+          <a class="widget-label" href="${link}" target="_blank">${label}</a>
+          ${likeBtn}
+          <a class="widget-spotify-link" href="${link}" target="_blank">🔗 Bekijk in Spotify</a>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  results.querySelectorAll(".widget-like").forEach(icon => {
+    icon.onclick = () => toggleLike(icon.dataset.id, icon);
+  });
+};
+
 
   const widgetRoot = document.createElement("div");
   widgetRoot.className = "widget spotify widget-dark";
