@@ -1,18 +1,31 @@
 # 🎵 Spotify SMPP Widget
-Deze widget integreert Spotify in Smartschool++, waardoor je een naadloze muziekervaring krijgt binnen het platform.
+Breng muziek tot leven in Smartschool++ met deze widget die Spotify naadloos integreert in je platform. Geniet van je favoriete tracks terwijl je werkt of studeert – zonder het venster te verlaten.
 
-🚀 Status: Misschien werkt het, misschien niet. Test het uit en ontdek zelf!
+# 🚀 Status
+⚠️ Experimenteel – Het kan perfect werken... of helemaal niet. Test het zelf en ontdek wat er mogelijk is!
 
 # ⚠️ ZEER BELANGRIJKE WAARSCHUWING
-🚨 LET OP! HET MISBRUIKEN VAN DE SPOTIFY API KAN ERNSTIGE GEVOLGEN HEBBEN! 🚨 
-❌ Gebruik de API-code uitsluitend voor dit project. 
-❌ Elke ongeoorloofde toepassing kan leiden tot een permanente ban, juridische stappen en strikte handhaving door Spotify! 
-❌ Spotify neemt schendingen van hun API-beleid uiterst serieus en kan sancties opleggen die je account volledig uitschakelen.
+🚨 LET OP! Misbruik van de Spotify API kan ernstige gevolgen hebben.
+
+🔒 Gebruik de API uitsluitend voor dit project en respecteer de officiële richtlijnen.
+
+❌ Ongeoorloofd gebruik kan leiden tot:
+
+- Permanente bans
+
+- Juridische stappen
+
+- Strikte handhaving door Spotify
+
+📌 Spotify duldt geen schendingen van hun API-beleid. Overtredingen kunnen je account voorgoed uitschakelen.
 
 # 🔒 JOUW VERANTWOORDELIJKHEID
-Gebruik de API met zorg en houd je strikt aan de regels, anders riskeer je zware straffen. Dit is geen waarschuwing om te negeren.
+Deze integratie is een krachtig hulpmiddel, maar vereist ook verantwoordelijkheid.
+
+✅ Houd je strikt aan de regels.
+⛔ Dit is geen vrijblijvende waarschuwing – neem het serieus.
 
 # 📌 Functies
-✔ Speel muziek rechtstreeks binnen Smartschool++. 
-✔ Eenvoudige integratie met Spotify.
-✔ Gebruiksvriendelijke interface voor een betere muziekervaring
+✔ Speel muziek direct af binnen Smartschool++
+✔ Eenvoudige en snelle Spotify-integratie
+✔ Gebruiksvriendelijke interface voor een optimale muziekervaring
