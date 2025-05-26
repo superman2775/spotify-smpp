@@ -107,7 +107,7 @@ const spotifyWidget = widget("spotify", async ({ dom, storage, settings }) => {
     <div class="widget-item">
       <img class="widget-cover" src="${pl.images?.[0]?.url || ''}" alt="playlist" />
       <div class="widget-meta">
-        <a class="widget-label" href="${pl.external_urls.spotify}" target="_blank">📂 ${pl.name}</a>
+        <a class="widget-label" href="${pl.external_urls.spotify}" target="_blank">🗂️ ${pl.name}</a>
         <a class="widget-spotify-link" href="${pl.external_urls.spotify}" target="_blank">🔗 Bekijk in Spotify</a>
       </div>
     </div>
@@ -193,7 +193,7 @@ const renderResults = async (query, type) => {
 
   results.innerHTML = items.map((entry, index) => {
     const image = entry.images?.[0]?.url || entry.album?.images?.[0]?.url || '';
-    const label = `${type === 'track' ? '🎵' : type === 'album' ? '💿' : type === 'playlist' ? '📂' : '👤'} ${entry.name}`;
+    const label = `${type === 'track' ? '🎵' : type === 'album' ? '📼' : type === 'playlist' ? '🗂️' : '👤'} ${entry.name}`;
     const link = entry.external_urls?.spotify || '#';
     const likeState = liked[index] ? 'true' : 'false';
     const likeIcon = liked[index] ? 'like-icon-liked.png' : 'like-icon-like.png';
@@ -228,9 +228,9 @@ const renderResults = async (query, type) => {
     <div class="widget-controls">
       <select class="widget-filter">
         <option value="track">🎵 Tracks</option>
-        <option value="album">💿 Albums</option>
+        <option value="album">📼 Albums</option>
         <option value="artist">👤 Artiesten</option>
-        <option value="playlist">📂 Playlists</option>
+        <option value="playlist">🗂️ Playlists</option>
       </select>
       <input class="widget-input" placeholder="Zoek iets op Spotify">
     </div>
